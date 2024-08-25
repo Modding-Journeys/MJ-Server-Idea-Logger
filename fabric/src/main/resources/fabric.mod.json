@@ -16,7 +16,7 @@
     "environment": "*",
     "entrypoints": {
         "main": [
-            "com.modding_journeys.examplemod.ExampleModFabric"
+            "com.modding_journeys.idea_logger.Idea_LoggerFabric"
         ]
     },
     "mixins": [
