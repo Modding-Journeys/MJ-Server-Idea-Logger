@@ -6,8 +6,11 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+import net.minecraftforge.fml.loading.FMLPaths;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -18,9 +21,10 @@ import java.util.List;
 
 public class IdeaCommand {
 
-    private static final String IDEA_FILE = "ideas.txt";
+    private static final Path IDEA_FILE = Paths.get(FMLPaths.GAMEDIR.get().toString(), "ideas.txt");
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        // Command to add an idea
         LiteralArgumentBuilder<CommandSourceStack> ideaCommand = Commands.literal("idea")
                 .then(Commands.argument("ideaText", StringArgumentType.greedyString())
                         .executes(context -> {
@@ -30,6 +34,7 @@ public class IdeaCommand {
                             return 1;
                         }));
 
+        // Command to list all ideas
         LiteralArgumentBuilder<CommandSourceStack> ideasCommand = Commands.literal("ideas")
                 .executes(context -> {
                     List<String> ideas = getIdeasFromFile();
@@ -41,12 +46,28 @@ public class IdeaCommand {
                     return 1;
                 });
 
+        // Command to remove a specific idea
+        LiteralArgumentBuilder<CommandSourceStack> removeIdeaCommand = Commands.literal("removeidea")
+                .then(Commands.argument("ideaText", StringArgumentType.greedyString())
+                        .executes(context -> {
+                            String idea = StringArgumentType.getString(context, "ideaText");
+                            boolean success = removeIdeaFromFile(idea);
+                            if (success) {
+                                context.getSource().sendSuccess(() -> Component.literal("Idea removed: " + idea), true);
+                            } else {
+                                context.getSource().sendSuccess(() -> Component.literal("Idea not found: " + idea), false);
+                            }
+                            return 1;
+                        }));
+
+        // Register commands with public visibility (no OP required)
         dispatcher.register(ideaCommand);
         dispatcher.register(ideasCommand);
+        dispatcher.register(removeIdeaCommand);
     }
 
     private static void addIdeaToFile(String idea) {
-        try (FileWriter writer = new FileWriter(IDEA_FILE, true)) {
+        try (FileWriter writer = new FileWriter(IDEA_FILE.toFile(), true)) {
             writer.write(idea + System.lineSeparator());
         } catch (IOException e) {
             e.printStackTrace();
@@ -54,10 +75,9 @@ public class IdeaCommand {
     }
 
     private static List<String> getIdeasFromFile() {
-        Path path = Paths.get(IDEA_FILE);
         List<String> ideas = new ArrayList<>();
-        if (Files.exists(path)) {
-            try (BufferedReader reader = Files.newBufferedReader(path)) {
+        if (Files.exists(IDEA_FILE)) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(IDEA_FILE.toFile()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     ideas.add(line);
@@ -67,5 +87,22 @@ public class IdeaCommand {
             }
         }
         return ideas;
+    }
+
+    private static boolean removeIdeaFromFile(String idea) {
+        List<String> ideas = getIdeasFromFile();
+        if (ideas.contains(idea)) {
+            ideas.remove(idea);
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(IDEA_FILE.toFile()))) {
+                for (String remainingIdea : ideas) {
+                    writer.write(remainingIdea);
+                    writer.newLine();
+                }
+                return true;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return false;
     }
 }

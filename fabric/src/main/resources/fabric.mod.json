@@ -1,6 +1,6 @@
 {
     "schemaVersion": 1,
-    "id": "examplemod",
+    "id": "idea_logger",
     "version": "${version}",
     "name": "${mod_name}",
     "description": "${description}",
